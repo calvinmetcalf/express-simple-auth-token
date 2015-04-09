@@ -37,8 +37,6 @@ JSON web token middleware for express designed to work with [Ember Simple Auth T
   serverTokenEndpoint which contains the method if identifying the user.
 - tokenPropertyName: field name for the token for use in verification middleware,
   the request send to serverTokenRefreshEndpoint, and the response from both token endpoints.
-- authorizationPrefix: by default the token is passed in a header prepended with 'Bearer ', if it isn't change this.
-- authorizationHeaderName: by default the token is passed in a header named 'Authorization', you can change it here.
 - refreshLeeway: in seconds, this option denotes if you should give a little
   leeway in the expiration time when refreshing the token.  Useful if your client library uses the expiration date as the time it should send the request causing all token refreshes to fail due to the token having expired milliseconds previously.
 - tokenLife: how long should the token last (in minutes) default is 60.
