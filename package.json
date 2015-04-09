@@ -1,0 +1,19 @@
+{
+  "name": "express-simple-auth-token",
+  "version": "1.0.0",
+  "description": "JSON web token middleware for express designed to work with Ember Simple Auth Token",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/calvinmetcalf/express-simple-auth-token.git"
+  },
+  "author": "Calvin Metcalf",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/calvinmetcalf/express-simple-auth-token/issues"
+  },
+  "homepage": "https://github.com/calvinmetcalf/express-simple-auth-token"
+}
