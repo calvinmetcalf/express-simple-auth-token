@@ -44,10 +44,10 @@ JSON web token middleware for express designed to work with [Ember Simple Auth T
 # Usage
 
 ```js
-var middleware = require('./thisModule');
+var expressSimpleAuthToken = require('express-simple-auth-token');
 var crypto = require('crypto');
 var HASH_LEN = 64;
-app.use(middleware({
+app.use(expressSimpleAuthToken({
   secret: crypto.randomBytes(64),
   lookup: function (user, callback) {
     lookupInDataBase(user, callback);

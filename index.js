@@ -10,23 +10,22 @@ function expressJWT(rawOpts) {
   var lookup = opts.lookup;
   var verify = opts.verify;
   var createToken = opts.createToken;
-  var refreshLookup = opts.createToken;
-
+  var refreshLookup = opts.refreshLookup;
   middleware.post(opts.serverTokenEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
     if (!req.body || !req.body[opts.identificationField] || !req.body[opts.passwordField]) {
-      return res.statusStatus(401);
+      return res.sendStatus(401);
     }
     lookup(req.body[opts.identificationField], function (err, resp) {
       if (err) {
-        return res.statusStatus(401);
+        return res.sendStatus(401);
       }
       verify(req.body[opts.passwordField], resp, function (err, verified) {
         if (err || !verified) {
-          return res.statusStatus(401);
+          return res.sendStatus(401);
         }
         createToken(resp, function (err, tokenData) {
           if (err) {
-            return res.statusStatus(401);
+            return res.sendStatus(401);
           }
           var token = jwt.sign(tokenData, opts.secret, {
             expiresInMinutes: opts.tokenLife,
@@ -41,7 +40,7 @@ function expressJWT(rawOpts) {
 
   middleware.post(opts.serverTokenRefreshEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
     if (!req.body || !req.body[opts.tokenPropertyName]) {
-      return res.statusStatus(401);
+      return res.sendStatus(401);
     }
     var token, expiredAt;
     try {
@@ -75,11 +74,11 @@ function expressJWT(rawOpts) {
     }
     refreshLookup(token, function (err, resp) {
       if (err) {
-        return res.statusStatus(401);
+        return res.sendStatus(401);
       }
       createToken(resp, function (err, tokenData) {
         if (err) {
-          return res.statusStatus(401);
+          return res.sendStatus(401);
         }
         var token = jwt.sign(tokenData, opts.secret, {
           expiresInMinutes: opts.tokenLife,
@@ -101,10 +100,12 @@ function expressJWT(rawOpts) {
             opts.algorithm
           ]
         });
+        next();
       } catch(e) {
         return opts.authError(req, res, next, e);
       }
     }
+    opts.authError(req, res, next, new Error('no token provided'));
   });
   return middleware;
 }
@@ -120,10 +121,10 @@ function dealOpts(rawOpts) {
     secret: '',
     algorithm: 'HS256',
     authError: function (req, res){
-      return res.statusStatus(401);
+      return res.sendStatus(401);
     },
-    serverTokenEndpoint: 'api-token-auth',
-    serverTokenRefreshEndpoint: 'api-token-refresh',
+    serverTokenEndpoint: '/api-token-auth',
+    serverTokenRefreshEndpoint: '/api-token-refresh',
     identificationField: 'username',
     passwordField: 'password',
     tokenPropertyName: 'token',
@@ -131,16 +132,8 @@ function dealOpts(rawOpts) {
     authorizationHeaderName: 'Authorization',
     refreshLeeway: 0,
     tokenLife: 60,
-    lookup: function (username, callback) {
-      process.nextTick(function () {
-        callback(new Error('you must impliment this'));
-      });
-    },
-    verify: function (password, user, callback) {
-      process.nextTick(function () {
-        callback(new Error('you must impliment this'));
-      });
-    },
+    lookup: null,
+    verify: null,
     createToken: function (user, callback) {
       process.nextTick(function () {
         callback(null, user);
@@ -153,7 +146,7 @@ function dealOpts(rawOpts) {
       out[key] = rawOpts[key];
     }
   });
-  if (!out.refreshLookup) {
+  if (!rawOpts.refreshLookup) {
     out.refreshLookup = function (user, callback) {
       if (!user[out.identificationField]) {
         return process.nextTick(function () {
@@ -163,11 +156,21 @@ function dealOpts(rawOpts) {
       var lookup = out.lookup;
       lookup(user[out.identificationField], callback);
     };
+  } else {
+    out.refreshLookup = rawOpts.refreshLookup;
   }
   ['lookup', 'verify', 'createToken', 'refreshLookup'].forEach(function (key) {
     if (typeof out[key] !== 'function') {
       throw new Error(key + ' must be a function');
     }
   });
+  out.serverTokenRefreshEndpoint = addSlash(out.serverTokenRefreshEndpoint);
+  out.serverTokenRefreshEndpoint = addSlash(out.serverTokenRefreshEndpoint);
   return out;
+}
+function addSlash(string) {
+  if (string[0] !== '/') {
+    return '/' + string;
+  }
+  return string;
 }

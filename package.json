@@ -4,7 +4,7 @@
   "description": "JSON web token middleware for express designed to work with Ember Simple Auth Token",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js | tnyan"
   },
   "repository": {
     "type": "git",
@@ -15,5 +15,15 @@
   "bugs": {
     "url": "https://github.com/calvinmetcalf/express-simple-auth-token/issues"
   },
-  "homepage": "https://github.com/calvinmetcalf/express-simple-auth-token"
+  "homepage": "https://github.com/calvinmetcalf/express-simple-auth-token",
+  "dependencies": {
+    "body-parser": "^1.12.2",
+    "express": "^4.12.3",
+    "jsonwebtoken": "^4.2.2"
+  },
+  "devDependencies": {
+    "supertest": "^0.15.0",
+    "tap-nyan": "0.0.2",
+    "tape": "^4.0.0"
+  }
 }
