@@ -11,19 +11,20 @@ function expressJWT(rawOpts) {
   var verify = opts.verify;
   var createToken = opts.createToken;
   var refreshLookup = opts.refreshLookup;
+  var authError = opts.authError;
   middleware.post(opts.serverTokenEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
     if (!req.body || !req.body[opts.identificationField] || !req.body[opts.passwordField]) {
       return res.sendStatus(401);
     }
-    lookup(req.body[opts.identificationField], function (err, resp) {
+    lookup.call(req, req.body[opts.identificationField], function (err, resp) {
       if (err) {
         return res.sendStatus(401);
       }
-      verify(req.body[opts.passwordField], resp, function (err, verified) {
+      verify.call(req, req.body[opts.passwordField], resp, function (err, verified) {
         if (err || !verified) {
           return res.sendStatus(401);
         }
-        createToken(resp, function (err, tokenData) {
+        createToken.call(req, resp, function (err, tokenData) {
           if (err) {
             return res.sendStatus(401);
           }
@@ -72,11 +73,11 @@ function expressJWT(rawOpts) {
         return res.sendStatus(401);
       }
     }
-    refreshLookup(token, function (err, resp) {
+    refreshLookup.call(req, token, function (err, resp) {
       if (err) {
         return res.sendStatus(401);
       }
-      createToken(resp, function (err, tokenData) {
+      createToken.call(req, resp, function (err, tokenData) {
         if (err) {
           return res.sendStatus(401);
         }
@@ -102,10 +103,10 @@ function expressJWT(rawOpts) {
         });
         next();
       } catch(e) {
-        return opts.authError(req, res, next, e);
+        return authError(req, res, next, e);
       }
     }
-    opts.authError(req, res, next, new Error('no token provided'));
+    authError(req, res, next, new Error('no token provided'));
   });
   return middleware;
 }
