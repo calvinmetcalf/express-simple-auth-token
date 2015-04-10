@@ -55,18 +55,20 @@ function expressJWT(rawOpts) {
   });
 
   middleware.post(opts.serverTokenRefreshEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
-    if (!req.body || !req.body[opts.dualTokens ? opts.refreshTokenPropertyName: opts.tokenPropertyName]) {
+    if (!req.body || !req.body[opts.dualTokens ? opts.refreshTokenPropertyName : opts.tokenPropertyName]) {
       return res.sendStatus(401);
     }
     var token, expiredAt;
     var tokenOpts = {
       algorithms: [
         opts.algorithm
-      ],
-      audience: opts.dualTokens ? opts.refreshAudience
+      ]
     };
+    if (opts.dualTokens) {
+      tokenOpts.audience = opts.refreshAudience;
+    }
     try {
-      token = jwt.verify(req.body[opts.dualTokens ? opts.refreshTokenPropertyName: opts.tokenPropertyName], opts.secret, );
+      token = jwt.verify(req.body[opts.dualTokens ? opts.refreshTokenPropertyName : opts.tokenPropertyName], opts.secret, tokenOpts);
     } catch (err) {
       if (!opts.refreshLeeway || err.name !== 'TokenExpiredError') {
         return res.sendStatus(401);
@@ -77,12 +79,8 @@ function expressJWT(rawOpts) {
           throw new Error('not a real experation date');
         }
         if (Date.now() - expiredAt < (1000 * opts.refreshLeeway)) {
-          token = jwt.verify(req.body.token, opts.secret, {
-            algorithms: [
-              opts.algorithm
-            ],
-            ignoreExpiration: true
-          });
+          tokenOpts.ignoreExpiration = true;
+          token = jwt.verify(req.body.token, opts.secret, tokenOpts);
         } else {
           throw err;
         }
@@ -98,11 +96,26 @@ function expressJWT(rawOpts) {
         if (err) {
           return res.sendStatus(401);
         }
-        var token = jwt.sign(tokenData, opts.secret, {
-          expiresInMinutes: opts.tokenLife,
-          algorithm: opts.algorithm
-        });
-        tokenData[opts.tokenPropertyName] = token;
+        if (opts.dualTokens) {
+          var shortToken = jwt.sign(tokenData, opts.secret, {
+            expiresInMinutes: opts.tokenLife,
+            algorithm: opts.algorithm,
+            audience: opts.tokenAudience
+          });
+          var longToken = jwt.sign(tokenData, opts.secret, {
+            expiresInMinutes: opts.refreshTokenLife,
+            algorithm: opts.algorithm,
+            audience: opts.refreshAudience
+          });
+          tokenData[opts.tokenPropertyName] = shortToken;
+          tokenData[opts.refreshTokenPropertyName] = longToken;
+        } else {
+          var token = jwt.sign(tokenData, opts.secret, {
+            expiresInMinutes: opts.tokenLife,
+            algorithm: opts.algorithm
+          });
+          tokenData[opts.tokenPropertyName] = token;
+        }
         res.json(tokenData);
       });
     });
@@ -112,13 +125,17 @@ function expressJWT(rawOpts) {
     if (req.headers[opts.authorizationHeaderName] &&
         req.headers[opts.authorizationHeaderName].length > opts.authorizationPrefix.length &&
         req.headers[opts.authorizationHeaderName].slice(0, opts.authorizationPrefix.length) === opts.authorizationPrefix) {
+      var tokenOpts = {
+        algorithms: [
+          opts.algorithm
+        ]
+      };
+      if (opts.dualTokens) {
+        tokenOpts.audience = opts.tokenAudience;
+      }
       try {
-        req.user = jwt.verify(req.headers.authorization.slice(opts.authorizationPrefix.length), opts.secret, {
-          algorithms: [
-            opts.algorithm
-          ]
-        });
-        next();
+        req.user = jwt.verify(req.headers.authorization.slice(opts.authorizationPrefix.length), opts.secret, tokenOpts);
+        return next();
       } catch(e) {
         return authError(req, res, next, e);
       }
