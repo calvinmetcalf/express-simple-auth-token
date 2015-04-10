@@ -249,3 +249,61 @@ test('refresh expired token', function (t) {
       }, 5 * 1000);
     });
 });
+
+test('get stuff', function (t) {
+  t.plan(7);
+  var opts = getOpts();
+  var app = expressSimpleAuthToken(opts);
+  app.get('/foo', function (req, res) {
+    res.send('ok');
+  });
+  supertest
+    .agent(app)
+    .post('/api-token-auth')
+    .type('form')
+    .send({ name: 'calvin', password: 'pie' })
+    .end(function (err, resp) {
+      t.error(err);
+      t.equals(resp.statusCode, 200);
+      var parsedResp = JSON.parse(resp.text);
+      t.equals(parsedResp.name, 'calvin');
+      t.equals(parsedResp.token.split('.').length, 3, 'token is present');
+      supertest
+        .agent(app)
+        .get('/foo')
+        .set('Authorization', 'Bearer ' + parsedResp.token)
+        .end(function (err, resp) {
+          t.error(err);
+          t.equals(resp.statusCode, 200);
+          t.equals(resp.text, 'ok');
+        });
+    });
+});
+test('get stuff, omit token', function (t) {
+  t.plan(7);
+  var opts = getOpts();
+  var app = expressSimpleAuthToken(opts);
+  app.get('/foo', function (req, res) {
+    res.send('ok');
+  });
+  supertest
+    .agent(app)
+    .post('/api-token-auth')
+    .type('form')
+    .send({ name: 'calvin', password: 'pie' })
+    .end(function (err, resp) {
+      t.error(err);
+      t.equals(resp.statusCode, 200);
+      var parsedResp = JSON.parse(resp.text);
+      t.equals(parsedResp.name, 'calvin');
+      t.equals(parsedResp.token.split('.').length, 3, 'token is present');
+      supertest
+        .agent(app)
+        .get('/foo')
+        .end(function (err, resp) {
+          t.error(err);
+          t.equals(resp.statusCode, 401);
+          t.equals(resp.text, 'Unauthorized');
+        });
+    });
+});

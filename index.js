@@ -165,6 +165,8 @@ function dealOpts(rawOpts) {
       throw new Error(key + ' must be a function');
     }
   });
+
+  out.authorizationHeaderName = out.authorizationHeaderName.toLowerCase();
   out.serverTokenRefreshEndpoint = addSlash(out.serverTokenRefreshEndpoint);
   out.serverTokenRefreshEndpoint = addSlash(out.serverTokenRefreshEndpoint);
   return out;
