@@ -101,7 +101,7 @@ function expressJWT(rawOpts) {
             opts.algorithm
           ]
         });
-        next();
+        return next();
       } catch(e) {
         return authError(req, res, next, e);
       }
