@@ -28,11 +28,26 @@ function expressJWT(rawOpts) {
           if (err) {
             return res.sendStatus(401);
           }
-          var token = jwt.sign(tokenData, opts.secret, {
-            expiresInMinutes: opts.tokenLife,
-            algorithm: opts.algorithm
-          });
-          tokenData[opts.tokenPropertyName] = token;
+          if (opts.dualTokens) {
+            var shortToken = jwt.sign(tokenData, opts.secret, {
+              expiresInMinutes: opts.tokenLife,
+              algorithm: opts.algorithm,
+              audience: opts.tokenAudience
+            });
+            var longToken = jwt.sign(tokenData, opts.secret, {
+              expiresInMinutes: opts.refreshTokenLife,
+              algorithm: opts.algorithm,
+              audience: opts.refreshAudience
+            });
+            tokenData[opts.tokenPropertyName] = shortToken;
+            tokenData[opts.refreshTokenPropertyName] = longToken;
+          } else {
+            var token = jwt.sign(tokenData, opts.secret, {
+              expiresInMinutes: opts.tokenLife,
+              algorithm: opts.algorithm
+            });
+            tokenData[opts.tokenPropertyName] = token;
+          }
           res.json(tokenData);
         });
       });
@@ -40,16 +55,18 @@ function expressJWT(rawOpts) {
   });
 
   middleware.post(opts.serverTokenRefreshEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
-    if (!req.body || !req.body[opts.tokenPropertyName]) {
+    if (!req.body || !req.body[opts.dualTokens ? opts.refreshTokenPropertyName: opts.tokenPropertyName]) {
       return res.sendStatus(401);
     }
     var token, expiredAt;
+    var tokenOpts = {
+      algorithms: [
+        opts.algorithm
+      ],
+      audience: opts.dualTokens ? opts.refreshAudience
+    };
     try {
-      token = jwt.verify(req.body[opts.tokenPropertyName], opts.secret, {
-        algorithms: [
-          opts.algorithm
-        ]
-      });
+      token = jwt.verify(req.body[opts.dualTokens ? opts.refreshTokenPropertyName: opts.tokenPropertyName], opts.secret, );
     } catch (err) {
       if (!opts.refreshLeeway || err.name !== 'TokenExpiredError') {
         return res.sendStatus(401);
@@ -125,14 +142,19 @@ function dealOpts(rawOpts) {
       return res.sendStatus(401);
     },
     serverTokenEndpoint: '/api-token-auth',
+    dualTokens: false,
     serverTokenRefreshEndpoint: '/api-token-refresh',
     identificationField: 'username',
     passwordField: 'password',
     tokenPropertyName: 'token',
+    refreshTokenPropertyName: 'refresh-token',
     authorizationPrefix: 'Bearer ',
     authorizationHeaderName: 'Authorization',
     refreshLeeway: 0,
     tokenLife: 60,
+    refreshTokenLife: 60 * 24 * 14, // 2 weeks
+    tokenAudience: 'non-refresh',
+    refreshAudience: 'refresh',
     lookup: null,
     verify: null,
     createToken: function (user, callback) {
