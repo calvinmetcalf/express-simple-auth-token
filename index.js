@@ -12,21 +12,21 @@ function expressJWT(rawOpts) {
   var createToken = opts.createToken;
   var refreshLookup = opts.refreshLookup;
   var authError = opts.authError;
-  middleware.post(opts.serverTokenEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
+  middleware.post(opts.serverTokenEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res, next) {
     if (!req.body || !req.body[opts.identificationField] || !req.body[opts.passwordField]) {
-      return res.sendStatus(401);
+      return authError(req, res, next, new Error('Request body is missing some necessary fields'));
     }
     lookup.call(req, req.body[opts.identificationField], function (err, resp) {
       if (err) {
-        return res.sendStatus(401);
+        return authError(req, res, next, err);
       }
       verify.call(req, req.body[opts.passwordField], resp, function (err, verified) {
         if (err || !verified) {
-          return res.sendStatus(401);
+          return authError(req, res, next, err || new Error('Verification failed'));
         }
         createToken.call(req, resp, function (err, tokenData) {
           if (err) {
-            return res.sendStatus(401);
+            return authError(req, res, next, err);
           }
           var token = jwt.sign(tokenData, opts.secret, {
             expiresInMinutes: opts.tokenLife,
@@ -39,9 +39,9 @@ function expressJWT(rawOpts) {
     });
   });
 
-  middleware.post(opts.serverTokenRefreshEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res) {
+  middleware.post(opts.serverTokenRefreshEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res, next) {
     if (!req.body || !req.body[opts.tokenPropertyName]) {
-      return res.sendStatus(401);
+      return authError(req, res, next, new Error('Request body is missing some necessary fields'));
     }
     var token, expiredAt;
     try {
@@ -52,7 +52,7 @@ function expressJWT(rawOpts) {
       });
     } catch (err) {
       if (!opts.refreshLeeway || err.name !== 'TokenExpiredError') {
-        return res.sendStatus(401);
+        return authError(req, res, next, err);
       }
       try {
         expiredAt = err.expiredAt.getTime();
@@ -69,17 +69,17 @@ function expressJWT(rawOpts) {
         } else {
           throw err;
         }
-      } catch(_){
-        return res.sendStatus(401);
+      } catch(err){
+        return authError(req, res, next, err);
       }
     }
     refreshLookup.call(req, token, function (err, resp) {
       if (err) {
-        return res.sendStatus(401);
+        return authError(req, res, next, err);
       }
       createToken.call(req, resp, function (err, tokenData) {
         if (err) {
-          return res.sendStatus(401);
+          return authError(req, res, next, err);
         }
         var token = jwt.sign(tokenData, opts.secret, {
           expiresInMinutes: opts.tokenLife,
