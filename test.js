@@ -307,3 +307,25 @@ test('get stuff, omit token', function (t) {
         });
     });
 });
+
+test('propogate errors to authError', function (t) {
+  t.plan(3);
+  var opts = getOpts();
+  opts.verify = function (pw, user, callback) {
+    callback(new Error('Custom message'));
+  };
+  opts.authError = function (req, res, next, err) {
+    res.status(401).send(err.message);
+  };
+  var app = expressSimpleAuthToken(opts);
+  supertest
+    .agent(app)
+    .post('/api-token-auth')
+    .type('form')
+    .send({ name: 'calvin', password: 'pie' })
+    .end(function (err, resp) {
+      t.error(err);
+      t.equals(resp.statusCode, 401);
+      t.equals(resp.text, 'Custom message', 'Response text should match custom error');
+    });
+});
