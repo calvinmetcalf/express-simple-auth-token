@@ -308,14 +308,11 @@ test('get stuff, omit token', function (t) {
     });
 });
 
-test('propogate errors to authError', function (t) {
+test('default for createTokenError', function (t) {
   t.plan(3);
   var opts = getOpts();
   opts.verify = function (pw, user, callback) {
-    callback(new Error('Custom message'));
-  };
-  opts.authError = function (req, res, next, err) {
-    res.status(401).send(err.message);
+    callback(new Error());
   };
   var app = expressSimpleAuthToken(opts);
   supertest
@@ -326,6 +323,79 @@ test('propogate errors to authError', function (t) {
     .end(function (err, resp) {
       t.error(err);
       t.equals(resp.statusCode, 401);
-      t.equals(resp.text, 'Custom message', 'Response text should match custom error');
+      t.equals(resp.text, 'Unauthorized');
+    });
+});
+
+test('able to override createTokenError', function (t) {
+  t.plan(3);
+  var opts = getOpts();
+  opts.verify = function (pw, user, callback) {
+    callback(new Error('Custom message'));
+  };
+  opts.createTokenError = function (req, res, next, err) {
+    res.status(403).send(err.message);
+  };
+  var app = expressSimpleAuthToken(opts);
+  supertest
+    .agent(app)
+    .post('/api-token-auth')
+    .type('form')
+    .send({ name: 'calvin', password: 'pie' })
+    .end(function (err, resp) {
+      t.error(err);
+      t.equals(resp.statusCode, 403);
+      t.equals(resp.text, 'Custom message');
+    });
+});
+
+test('default for refreshTokenError', function (t) {
+  t.plan(3);
+  var opts = getOpts();
+  opts.refreshLookup = function (user, callback) {
+    callback(new Error());
+  };
+  var app = expressSimpleAuthToken(opts);
+  supertest
+    .agent(app)
+    .post('/api-token-refresh')
+    .type('form')
+    .send({ name: 'calvin', password: 'pie' })
+    .end(function (err, resp) {
+      t.error(err);
+      t.equals(resp.statusCode, 401);
+      t.equals(resp.text, 'Unauthorized');
+    });
+});
+
+test('able to override refreshTokenError', function (t) {
+  t.plan(3);
+  var opts = getOpts();
+  opts.refreshLookup = function (user, callback) {
+    callback(new Error('Custom message'));
+  };
+  opts.refreshTokenError = function (req, res, next, err) {
+    res.status(403).send(err.message);
+  };
+  var app = expressSimpleAuthToken(opts);
+  supertest
+    .agent(app)
+    .post('/api-token-auth')
+    .type('form')
+    .send({ name: 'calvin', password: 'pie' })
+    .end(function (err, resp) {
+      var parsedResp = JSON.parse(resp.text);
+      setTimeout(function () {
+        supertest
+          .agent(app)
+          .post('/api-token-refresh')
+          .type('form')
+          .send({ token: parsedResp.token, name: 'calvin'})
+          .end(function (err, resp) {
+            t.error(err);
+            t.equals(resp.statusCode, 403);
+            t.equals(resp.text, 'Custom message');
+          });
+      }, 1000);
     });
 });

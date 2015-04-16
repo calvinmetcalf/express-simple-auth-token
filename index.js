@@ -12,21 +12,23 @@ function expressJWT(rawOpts) {
   var createToken = opts.createToken;
   var refreshLookup = opts.refreshLookup;
   var authError = opts.authError;
+  var createTokenError = opts.createTokenError;
+  var refreshTokenError = opts.refreshTokenError;
   middleware.post(opts.serverTokenEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res, next) {
     if (!req.body || !req.body[opts.identificationField] || !req.body[opts.passwordField]) {
-      return authError(req, res, next, new Error('Request body is missing some necessary fields'));
+      return createTokenError(req, res, next, new Error('Request body is missing some necessary fields'));
     }
     lookup.call(req, req.body[opts.identificationField], function (err, resp) {
       if (err) {
-        return authError(req, res, next, err);
+        return createTokenError(req, res, next, err);
       }
       verify.call(req, req.body[opts.passwordField], resp, function (err, verified) {
         if (err || !verified) {
-          return authError(req, res, next, err || new Error('Verification failed'));
+          return createTokenError(req, res, next, err || new Error('Verification failed'));
         }
         createToken.call(req, resp, function (err, tokenData) {
           if (err) {
-            return authError(req, res, next, err);
+            return createTokenError(req, res, next, err);
           }
           var token = jwt.sign(tokenData, opts.secret, {
             expiresInMinutes: opts.tokenLife,
@@ -41,7 +43,7 @@ function expressJWT(rawOpts) {
 
   middleware.post(opts.serverTokenRefreshEndpoint, bodyParser.urlencoded({ extended: true }), bodyParser.json(), function (req, res, next) {
     if (!req.body || !req.body[opts.tokenPropertyName]) {
-      return authError(req, res, next, new Error('Request body is missing some necessary fields'));
+      return refreshTokenError(req, res, next, new Error('Request body is missing some necessary fields'));
     }
     var token, expiredAt;
     try {
@@ -52,7 +54,7 @@ function expressJWT(rawOpts) {
       });
     } catch (err) {
       if (!opts.refreshLeeway || err.name !== 'TokenExpiredError') {
-        return authError(req, res, next, err);
+        return refreshTokenError(req, res, next, err);
       }
       try {
         expiredAt = err.expiredAt.getTime();
@@ -70,16 +72,16 @@ function expressJWT(rawOpts) {
           throw err;
         }
       } catch(err){
-        return authError(req, res, next, err);
+        return refreshTokenError(req, res, next, err);
       }
     }
     refreshLookup.call(req, token, function (err, resp) {
       if (err) {
-        return authError(req, res, next, err);
+        return refreshTokenError(req, res, next, err);
       }
       createToken.call(req, resp, function (err, tokenData) {
         if (err) {
-          return authError(req, res, next, err);
+          return refreshTokenError(req, res, next, err);
         }
         var token = jwt.sign(tokenData, opts.secret, {
           expiresInMinutes: opts.tokenLife,
@@ -121,7 +123,13 @@ function dealOpts(rawOpts) {
   var out = {
     secret: '',
     algorithm: 'HS256',
-    authError: function (req, res){
+    authError: function (req, res) {
+      return res.sendStatus(401);
+    },
+    createTokenError: function (req, res) {
+      return res.sendStatus(401);
+    },
+    refreshTokenError: function (req, res) {
       return res.sendStatus(401);
     },
     serverTokenEndpoint: '/api-token-auth',
