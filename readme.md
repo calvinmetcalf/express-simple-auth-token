@@ -66,11 +66,11 @@ app.use(expressSimpleAuthToken({
       }
       callback(null, out);
     });
-    createToken: function (user, callback) {
-      delete user.hash;
-      delete user.salt;
-      callback(null, user);
-    }
+  },
+  createToken: function (user, callback) {
+    delete user.hash;
+    delete user.salt;
+    callback(null, user);
   }
 }));
 ```
