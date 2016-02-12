@@ -31,7 +31,7 @@ function expressJWT(rawOpts) {
             return createTokenError(req, res, next, err);
           }
           var token = jwt.sign(tokenData, opts.secret, {
-            expiresInMinutes: opts.tokenLife,
+            expiresIn: opts.tokenLife * 60,
             algorithm: opts.algorithm
           });
           tokenData[opts.tokenPropertyName] = token;
@@ -84,7 +84,7 @@ function expressJWT(rawOpts) {
           return refreshTokenError(req, res, next, err);
         }
         var token = jwt.sign(tokenData, opts.secret, {
-          expiresInMinutes: opts.tokenLife,
+          expiresIn: opts.tokenLife * 60,
           algorithm: opts.algorithm
         });
         tokenData[opts.tokenPropertyName] = token;
