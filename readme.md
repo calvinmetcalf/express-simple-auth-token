@@ -43,8 +43,8 @@ Optional settings:
 - `tokenLife` - how long should the token last, in minutes (default: `60`)
 - `authError` - what to do when we can't validate a json web token (either because  it isn't there or it is invalid). Defaults to
 
-      function (req, res, next, error){
-        return res.statusStatus(401);
+      function (req, res, next, error) {
+        return res.sendStatus(401);
       }
 
 - `createTokenError` - function called when error encountered in request to `serverTokenEndpoint`. Same default as `authError`.
@@ -73,32 +73,35 @@ Optional settings:
 ## More Complete Example
 
 ```js
-var expressSimpleAuthToken = require('express-simple-auth-token');
-var crypto = require('crypto');
+let expressSimpleAuthToken = require('express-simple-auth-token');
+let crypto = require('crypto');
 
-var HASH_LEN = 64;
+let HASH_LEN = 64;
 
 app.use(expressSimpleAuthToken({
   secret: crypto.randomBytes(64),
-  lookup: function (user, callback) {
+  
+  lookup(user, callback) {
     lookupInDataBase(user, callback);
   },
-  verify: function (password, user, callback) {
-    var hash = user.hash;
+  
+  verify(password, user, callback) {
+    let hash = user.hash;
     crypto.pbkdf2(password, user.salt, 10000, HASH_LEN, 'sha224', function (err, resp) {
       if (err) {
         return callback(err);
       }
-      var hash = user.hash;
-      var i = -1;
-      var out = 0;
+      let hash = user.hash;
+      let i = -1;
+      let out = 0;
       while (++i < HASH_LEN) {
         out |= hash[i] ^ resp[i];
       }
       callback(null, out);
     });
   },
-  createToken: function (user, callback) {
+  
+  createToken(user, callback) {
     delete user.hash;
     delete user.salt;
     callback(null, user);
