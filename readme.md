@@ -6,14 +6,16 @@ JSON web token middleware for express designed to work with [Ember Simple Auth T
 ## Usage
 
 ```js
-var expressSimpleAuthToken = require('express-simple-auth-token');
+let expressSimpleAuthToken = require('express-simple-auth-token');
 
-var tokenMiddleware = expressSimpleAuthToken({
+let tokenMiddleware = expressSimpleAuthToken({
   secret: 'keyboard cat',
-  lookup: function (user, callback) {
+  
+  lookup(user, callback) {
     users.findOne({ _id: user.id }, callback);
   },
-  verify: function (password, user, callback) {
+  
+  verify(password, user, callback) {
     verifyPassword(password, user.hash, callback);
   }
 });
